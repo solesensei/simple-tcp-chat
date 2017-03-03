@@ -8,4 +8,4 @@ client + server
 
 server works on 5555 port, you could change it in #define
 
-client connect like nc or telnet: ./client HOSTNAME PORT
+client connects like nc or telnet: ./client HOSTNAME PORT
