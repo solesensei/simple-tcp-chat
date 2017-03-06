@@ -11,8 +11,7 @@
 
 #define MAXMSG 1024
 
-int
-main (int argc, char const *argv[])
+int main (int argc, char const *argv[])
 {
     int port, n, sd, rval, sval;
     struct hostent *phe;
@@ -20,7 +19,7 @@ main (int argc, char const *argv[])
 
     if (argc != 3) 
     {
-        fprintf(stderr, "not enough arguments\n");
+        fprintf(stderr, "not enough arguments, usage:\n./client ip port\n");
         exit(1);
     }
     //get host address via second argument
@@ -49,7 +48,7 @@ main (int argc, char const *argv[])
 
     if (connect(sd, (struct sockaddr*) &sin, sizeof(sin)) < 0)
     {
-        perror("connect failed");
+        perror("connection failed");
         exit(EXIT_FAILURE);
     }
     
