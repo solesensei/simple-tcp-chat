@@ -1,5 +1,4 @@
-#sole
-#BpArCuCTeMbI
+# Sole & BpArCuCTeMbI
 simple tcp ip chat.
 
 af_inet, select(), nicknames
