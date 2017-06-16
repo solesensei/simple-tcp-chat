@@ -18,9 +18,11 @@
 int main(int argc , char *argv[])
 {
     int opt = TRUE;
-    int ms , addrlen , new_socket , client_socket[30] , max_clients = 30 , activity, i , k , valread , sd;
+    int ms , addrlen , new_socket , client_socket_init[30] , client_socket[30] , max_clients = 30 , activity, i , j , k , valread , sd;
     char  client_name[max_clients][MAXNICK];
     int max_sd;
+    int sd_is_init = FALSE;
+    int no_broadcast = FALSE;
     struct sockaddr_in address;
       
     char buffer[MAXMSG];
@@ -126,7 +128,8 @@ int main(int argc , char *argv[])
                 if( client_socket[i] == 0 )
                 {
                     client_socket[i] = new_socket;
-                    printf("Adding to list of sockets as %d\n" , i);
+                    client_socket_init[i] = new_socket;
+                    printf("Adding to list of init sockets as %d\n" , i);
                     
                     /*
                       here it is some bug - server hungs while client enter his nick - need to fix
@@ -134,6 +137,7 @@ int main(int argc , char *argv[])
                              2) to use fork() and to left all nicking job on son
                              3) to create alarm() signal and to kick client, if he entering nick too long
                     */
+                    /*
                     char sym;
 
                     for   (k = 0; k < MAXNICK; ++k ) 
@@ -179,6 +183,7 @@ int main(int argc , char *argv[])
                             send(sd , mes , strlen(mes) , 0 );
                         }
                     }
+                    */
                     break;
                 }
             }
@@ -186,10 +191,20 @@ int main(int argc , char *argv[])
         //else - existing socket
         for (i = 0; i < max_clients; i++) 
         {
+            sd_is_init = FALSE;
+            no_broadcast = FALSE;
             sd = client_socket[i];
 
             if (FD_ISSET( sd , &readfds)) 
             {
+                for (k = 0; k < max_clients; k++)
+                {
+                    if(sd == client_socket_init[k]) {
+                        sd_is_init = TRUE;
+                        break;
+                    }
+                }
+
                 if ((valread = read( sd , buffer, MAXMSG)) == 0)
                 {
                     //end of file - somebody disconnected
@@ -203,6 +218,7 @@ int main(int argc , char *argv[])
                     shutdown(sd,2); // close connection
                     close( sd );
                     client_socket[i] = 0;
+                    if(sd_is_init) client_socket_init[i] = 0;;
                     message = " left the chat!\n\0";
                     for(k = 0; k < MAXNICK; ++k) //length of nick
                         if ( client_name[i][k] == '\n' || client_name[i][k] == '\0' )
@@ -222,35 +238,95 @@ int main(int argc , char *argv[])
                 //message forwarding - redirect
                 else
                 { 
-                    if ( buffer[0] == '\n' ) continue;
-                    buffer[valread] = '\0';
-                    
-                    //skipping spaces from start
-                    int skip;
-                    for(skip = 0; buffer[skip] == ' '; ++skip)
-                    {}
-
-                    //message creation
-                    for(k = 0; k < MAXNICK; ++k) //length of nick
-                        if ( client_name[i][k] == '\n' || client_name[i][k] == '\0' )
-                            break;
-                    strncpy(mes, client_name[i], k);
-                    client_name[i][k] = '\n';
-                    mes[k] = '\0';
-
-                    strcat(mes, ": \0" );
-                    strcat(mes, buffer+skip);
-                    //message send
-                    for (k = 0; k < max_clients; k++)
+                    if(sd_is_init)
                     {
-                        sd = client_socket[k]; //recv socket
-                        if (k == i) //skip send to yourself
+                        if(buffer[0] == '\n')
                         {
+                            message = "kicked: empty nickname\n";
+
+                            send(sd, message, strlen(message), 0);
+                            shutdown( sd ,2); // close connection
+                            close( sd );
+                            client_socket[i] = 0;
+                            client_socket_init[i] = 0;
+                            strcpy(client_name[i], "\0");
                             continue;
                         }
-                        send(sd , mes , strlen(mes) , 0 );
+
+                        for(k = 0; k < valread; k++)
+                        {
+                            if(buffer[k] == ' ')
+                            {
+                                message = "kicked: nickname with spaces\n";
+
+                                send(sd, message, strlen(message), 0);
+                                shutdown( sd ,2); // close connection
+                                close( sd );
+                                client_socket[i] = 0;
+                                client_socket_init[i] = 0;
+                                strcpy(client_name[i], "\0");
+                                break;
+                            }
+                        }
+
+                        if(client_socket[i] == 0) continue;
+
+                        memcpy(client_name[i], buffer, valread - 1);
+                        client_name[i][valread] = '\0';
+                        message = " joined the chat!\n\0";
+                        strcpy(mes, client_name[i]);
+                        strcat(mes,message);
+                        for (k = 0; k < max_clients; k++) //send join info
+                        {
+                            if (client_socket[k] == 0) continue;
+                            send(client_socket[k] , mes , strlen(mes) , 0 );
+                        }
+
+                        client_socket_init[i] = 0;
                     }
-            
+                    else
+                    {
+                        if ( buffer[0] == '\n' ) continue;
+                        buffer[valread] = '\0';
+
+                        //skipping spaces from start
+                        int skip;
+                        for(skip = 0; buffer[skip] == ' '; ++skip)
+                        {}
+
+                        //message creation
+                        for(k = 0; k < MAXNICK; ++k) //length of nick
+                            if ( client_name[i][k] == '\n' || client_name[i][k] == '\0' )
+                                break;
+                        strncpy(mes, client_name[i], k);
+                        client_name[i][k] = '\n';
+                        mes[k] = '\0';
+
+                        strcat(mes, ": \0" );
+                        strcat(mes, buffer+skip);
+                        //message send
+                        for (k = 0; k < max_clients; k++)
+                        {
+                            no_broadcast = FALSE;
+                            sd = client_socket[k]; //recv socket
+                            for(j = 0; j < max_clients; j++)
+                            {
+                                if(sd == client_socket_init[j])
+                                {
+                                    no_broadcast = TRUE;
+                                    break;
+                                }
+                            }
+
+                            if(no_broadcast) continue;
+
+                            if (k == i) //skip send to yourself
+                            {
+                                continue;
+                            }
+                            send(sd , mes , strlen(mes) , 0 );
+                        }
+                    }
                 }
             }
         }
