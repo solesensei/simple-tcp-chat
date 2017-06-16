@@ -128,6 +128,7 @@ int main(int argc , char *argv[])
                 if( client_socket[i] == 0 )
                 {
                     client_socket[i] = new_socket;
+                    //add socket to init list
                     client_socket_init[i] = new_socket;
                     printf("Adding to list of init sockets as %d\n" , i);
                     break;
@@ -164,7 +165,7 @@ int main(int argc , char *argv[])
                     shutdown(sd,2); // close connection
                     close( sd );
                     client_socket[i] = 0;
-                    if(sd_is_init) client_socket_init[i] = 0;;
+                    if(sd_is_init) client_socket_init[i] = 0; //remove socket from init list
                     message = " left the chat!\n\0";
                     for(k = 0; k < MAXNICK; ++k) //length of nick
                         if ( client_name[i][k] == '\n' || client_name[i][k] == '\0' )
@@ -194,7 +195,7 @@ int main(int argc , char *argv[])
                             shutdown( sd ,2); // close connection
                             close( sd );
                             client_socket[i] = 0;
-                            client_socket_init[i] = 0;
+                            client_socket_init[i] = 0; //remove socket from init list
                             strcpy(client_name[i], "\0");
                             continue;
                         }
@@ -209,7 +210,7 @@ int main(int argc , char *argv[])
                                 shutdown( sd ,2); // close connection
                                 close( sd );
                                 client_socket[i] = 0;
-                                client_socket_init[i] = 0;
+                                client_socket_init[i] = 0; //remove socket from init list
                                 strcpy(client_name[i], "\0");
                                 break;
                             }
@@ -228,6 +229,7 @@ int main(int argc , char *argv[])
                             send(client_socket[k] , mes , strlen(mes) , 0 );
                         }
 
+                        //remove socket from init list
                         client_socket_init[i] = 0;
                     }
                     else
