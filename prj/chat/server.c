@@ -130,60 +130,6 @@ int main(int argc , char *argv[])
                     client_socket[i] = new_socket;
                     client_socket_init[i] = new_socket;
                     printf("Adding to list of init sockets as %d\n" , i);
-                    
-                    /*
-                      here it is some bug - server hungs while client enter his nick - need to fix
-                      ideas: 1) to move read nick block to send message block
-                             2) to use fork() and to left all nicking job on son
-                             3) to create alarm() signal and to kick client, if he entering nick too long
-                    */
-                    /*
-                    char sym;
-
-                    for   (k = 0; k < MAXNICK; ++k ) 
-                     if ( (valread = read( new_socket, &sym, 1 )) == 0 || sym == '\n' || sym == ' ') break; 
-                     else
-                     {
-                        client_name[i][k] = sym;
-                        write(1,&sym,1); //cout nick to server log
-                     } 
-                        write(1,"\n",1); 
-                    
-                    if ( k == 0 || valread == 0 || sym == ' ')
-                    {
-                       //end of file - somebody disconnected | empty nick 
-                       
-                       if ( sym == ' ')
-                            message = "kicked: nickname with spaces\n";
-                       else if (k)
-                            message = "kicked: empty nickname\n";
-                       else 
-                            message = "\ndisconected\n";
-                       send(new_socket, message, strlen(message), 0); 
-
-                       getpeername(new_socket , (struct sockaddr*)&address , (socklen_t*)&addrlen); //address of peer connected from sd
-                       printf("Host disconnected , ip : %s , port : %d , name : %s\n" , 
-                            inet_ntoa(address.sin_addr) , ntohs(address.sin_port) , client_name[i]);
-                     
-                       shutdown( new_socket ,2); // close connection
-                       close( new_socket );
-                       client_socket[i] = 0;
-                       strcpy(client_name[i], "\0");
-                    }
-                    else //nick entered right
-                    {
-                        message = " joined the chat!\n\0";
-                        strncpy(mes,client_name[i],k);
-                        mes[k] = '\0';
-                        strcat(mes,message);
-                        for (k = 0; k < max_clients; k++) //send join info
-                        {
-                            if (client_socket[k] == 0) continue;
-                            sd = client_socket[k]; 
-                            send(sd , mes , strlen(mes) , 0 );
-                        }
-                    }
-                    */
                     break;
                 }
             }
