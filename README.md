@@ -1,11 +1,13 @@
-# Sole & BpArCuCTeMbI
-simple tcp ip chat.
+# Simple TCP IP Chat.
+by Sole & BpArCuCTeMbI
 
 af_inet, select(), nicknames
 
-client + server
+# Server
+Server works on 5555 port, you could change it in 
+```c
+#define PORT 5555 
+```
 
-server works on 5555 port, you could change it in #define
-
-client connects like nc or telnet: ./client HOSTNAME PORT
-
+# Client
+Client connects like __nc__ or __telnet__: `./client HOSTNAME PORT`
