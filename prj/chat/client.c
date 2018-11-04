@@ -14,45 +14,61 @@
 
 int main (int argc, char const *argv[])
 {
-    int port, n, sd, rval, sval;
-    struct hostent *phe;
-    struct sockaddr_in sin;
+    int sd, rval, sval, err;
+    struct addrinfo *result, *rp, hints;
 
     if (argc != 3) 
     {
         fprintf(stderr, "not enough arguments, usage:\n./client ip port\n");
         exit(1);
     }
-    //get host address via second argument
-    if ( !(phe = gethostbyname(argv[1])) ) 
+
+    // Prepare the hints datastructure to help find a host.
+    memset (&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = 0;
+    hints.ai_protocol = 0;
+    hints.ai_canonname = NULL;
+    hints.ai_addr = NULL;
+    hints.ai_next = NULL;
+
+    // hostname, service (port), hints and results
+    err = getaddrinfo(argv[1], argv[2], &hints, &result);
+
+    if (err != 0)
     {
-        fprintf(stderr, "bad host address: %s\n", argv[1]);
+        fprintf(stderr, "getaddrinfo failed: %s\n", gai_strerror(err));
         exit(1);
     }
-    //read port and its length
-    if ( sscanf(argv[2],"%d%n",&port, &n) != 1
-        || argv[2][n] || port <=0 || port > 65535 ) 
+
+    // iterate through 'result' using 'rp' until hosts cannot be found
+    // or break from the loop on success.
+    for (rp = result; rp != NULL; rp = rp->ai_next)
     {
-        fprintf(stderr, "bad port number: %s\n",argv[2]);
+        sd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+
+        if (sd == -1)
+        {
+            continue;
+        }
+
+        if (connect(sd, rp->ai_addr, rp->ai_addrlen) == 0)
+        {
+            break;
+        }
+
+        close(sd);
+    }
+
+    if (rp == NULL)
+    {
+        fprintf(stderr, "Could not connect socket to address.\n");
         exit(1);
     }
 
-    if ( (sd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
-    {
-        perror("socket failed");
-        exit(EXIT_FAILURE);
-    }
+    freeaddrinfo(result);
 
-    sin.sin_family = AF_INET;
-    sin.sin_port = htons(port);
-    memcpy( &sin.sin_addr, phe->h_addr_list[0], sizeof(sin.sin_addr));
-
-    if (connect(sd, (struct sockaddr*) &sin, sizeof(sin)) < 0)
-    {
-        perror("connection failed");
-        exit(EXIT_FAILURE);
-    }
-    
     int rbuf[MAXMSG]; //read
     int sbuf[MAXMSG]; //send
 
