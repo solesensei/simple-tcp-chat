@@ -13,19 +13,25 @@
 int main (int argc, char const *argv[])
 {
     int port, n, sd, rval, sval;
-    struct hostent *phe;
-    struct sockaddr_in sin;
+    struct addrinfo hints, *result, *rp;
 
     if (argc != 3) 
     {
         fprintf(stderr, "not enough arguments, usage:\n./client ip port\n");
         exit(1);
     }
+    
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = 0;
+    hints.ai_protocol = 0;          
+    
     //get host address via second argument
-    if ( !(phe = gethostbyname(argv[1])) ) 
-    {
-        fprintf(stderr, "bad host address: %s\n", argv[1]);
-        exit(1);
+    s = getaddrinfo(argv[1], argv[2], &hints, &result);
+    if (s != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+        exit(EXIT_FAILURE);
     }
     //read port and its length
     if ( sscanf(argv[2],"%d%n",&port, &n) != 1
@@ -34,29 +40,32 @@ int main (int argc, char const *argv[])
         fprintf(stderr, "bad port number: %s\n",argv[2]);
         exit(1);
     }
-
-    if ( (sd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
+    for (rp = result; rp != NULL; rp = rp->ai_next)
     {
-        perror("socket failed");
-        exit(EXIT_FAILURE);
-    }
+        sd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+        if (sd == -1)
+           continue;
+        
+        // get socket
+        if (connect(sd, rp->ai_addr, rp->ai_addrlen) != -1)
+           break;  // success connected
 
-    sin.sin_family = AF_INET;
-    sin.sin_port = htons(port);
-    memcpy( &sin.sin_addr, phe->h_addr_list[0], sizeof(sin.sin_addr));
-
-    if (connect(sd, (struct sockaddr*) &sin, sizeof(sin)) < 0)
-    {
-        perror("connection failed");
-        exit(EXIT_FAILURE);
+        close(sd);
     }
     
+    // no address succeeded
+    if (rp == NULL)
+    {              
+        fprintf(stderr, "Could not connect\n");
+        exit(EXIT_FAILURE);
+    }
+
     int rbuf[MAXMSG]; //read
     int sbuf[MAXMSG]; //send
 
     int pid = fork(); //here creating son
     sval = rval = 1;
-    while (sval && rval )
+    while (sval && rval)
     {   
         //recv
         if (pid == 0) //son
