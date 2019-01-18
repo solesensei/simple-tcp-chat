@@ -43,14 +43,6 @@ int main (int argc, char const *argv[])
         exit(EXIT_FAILURE);
     }
     
-    //read port and its length
-    /* if ( sscanf(argv[2],"%d%n",&port, &n) != 1
-        || argv[2][n] || port <=0 || port > 65535 ) 
-    {
-        fprintf(stderr, "bad port number: %s\n",argv[2]);
-        exit(1);
-    } */
-    
     // iterate through 'result' using 'rp' until hosts cannot be found
     // or break from the loop on success.
     for (rp = result; rp != NULL; rp = rp->ai_next)
