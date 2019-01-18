@@ -7,12 +7,13 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <sys/wait.h>
+#include <signal.h>
 
 #define MAXMSG 1024
 
 int main (int argc, char const *argv[])
 {
-    int port, n, sd, rval, sval;
+    int port, err, n, sd, rval, sval;
     struct addrinfo hints, *result, *rp;
 
     if (argc != 3) 
@@ -20,45 +21,55 @@ int main (int argc, char const *argv[])
         fprintf(stderr, "not enough arguments, usage:\n./client ip port\n");
         exit(1);
     }
-    
-    memset(&hints, 0, sizeof(struct addrinfo));
+
+    // Prepare the hints datastructure to help find a host.
+    memset (&hints, 0, sizeof(struct addrinfo));
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = 0;
-    hints.ai_protocol = 0;          
-    
-    //get host address via second argument
-    s = getaddrinfo(argv[1], argv[2], &hints, &result);
-    if (s != 0) {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+    hints.ai_protocol = 0;
+    hints.ai_canonname = NULL;
+    hints.ai_addr = NULL;
+    hints.ai_next = NULL;
+
+    // hostname, service (port), hints and results
+    err = getaddrinfo(argv[1], argv[2], &hints, &result);
+
+    if (err != 0)
+    {
+        fprintf(stderr, "getaddrinfo failed: %s\n", gai_strerror(err));
         exit(EXIT_FAILURE);
     }
+    
     //read port and its length
-    if ( sscanf(argv[2],"%d%n",&port, &n) != 1
+    /* if ( sscanf(argv[2],"%d%n",&port, &n) != 1
         || argv[2][n] || port <=0 || port > 65535 ) 
     {
         fprintf(stderr, "bad port number: %s\n",argv[2]);
         exit(1);
-    }
+    } */
+    
+    // iterate through 'result' using 'rp' until hosts cannot be found
+    // or break from the loop on success.
     for (rp = result; rp != NULL; rp = rp->ai_next)
     {
         sd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
         if (sd == -1)
-           continue;
-        
-        // get socket
+            continue;
+
         if (connect(sd, rp->ai_addr, rp->ai_addrlen) != -1)
-           break;  // success connected
+            break; // success connected
 
         close(sd);
     }
-    
-    // no address succeeded
+
     if (rp == NULL)
-    {              
-        fprintf(stderr, "Could not connect\n");
+    {
+        fprintf(stderr, "Could not connect socket to address.\n");
         exit(EXIT_FAILURE);
     }
+
+    freeaddrinfo(result);
 
     int rbuf[MAXMSG]; //read
     int sbuf[MAXMSG]; //send
