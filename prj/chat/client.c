@@ -9,13 +9,14 @@
 #include <sys/wait.h>
 #include <signal.h>
 
-
 #define MAXMSG 1024
 
 int main (int argc, char const *argv[])
 {
-    int sd, rval, sval, err;
-    struct addrinfo *result, *rp, hints;
+
+    int port, err, n, sd, rval, sval;
+    struct addrinfo hints, *result, *rp;
+
 
     if (argc != 3) 
     {
@@ -39,24 +40,27 @@ int main (int argc, char const *argv[])
     if (err != 0)
     {
         fprintf(stderr, "getaddrinfo failed: %s\n", gai_strerror(err));
-        exit(1);
+        exit(EXIT_FAILURE);
     }
-
+    
+    //read port and its length
+    /* if ( sscanf(argv[2],"%d%n",&port, &n) != 1
+        || argv[2][n] || port <=0 || port > 65535 ) 
+    {
+        fprintf(stderr, "bad port number: %s\n",argv[2]);
+        exit(1);
+    } */
+    
     // iterate through 'result' using 'rp' until hosts cannot be found
     // or break from the loop on success.
     for (rp = result; rp != NULL; rp = rp->ai_next)
     {
         sd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-
         if (sd == -1)
-        {
             continue;
-        }
 
-        if (connect(sd, rp->ai_addr, rp->ai_addrlen) == 0)
-        {
-            break;
-        }
+        if (connect(sd, rp->ai_addr, rp->ai_addrlen) != -1)
+            break; // success connected
 
         close(sd);
     }
@@ -64,7 +68,7 @@ int main (int argc, char const *argv[])
     if (rp == NULL)
     {
         fprintf(stderr, "Could not connect socket to address.\n");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     freeaddrinfo(result);
@@ -74,7 +78,7 @@ int main (int argc, char const *argv[])
 
     int pid = fork(); //here creating son
     sval = rval = 1;
-    while (sval && rval )
+    while (sval && rval)
     {   
         //recv
         if (pid == 0) //son
