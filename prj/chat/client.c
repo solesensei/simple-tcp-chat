@@ -13,8 +13,10 @@
 
 int main (int argc, char const *argv[])
 {
+
     int port, err, n, sd, rval, sval;
     struct addrinfo hints, *result, *rp;
+
 
     if (argc != 3) 
     {
